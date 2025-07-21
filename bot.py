@@ -1,29 +1,27 @@
+import os
+from dotenv import load_dotenv
 import stripe
+import pytz
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
-# Replace with your Stripe test API key
-stripe.api_key = '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'
-
-# Replace with your Telegram bot token
-TELEGRAM_BOT_TOKEN = '7971051467:AAEgFdgmEcmfYmIWfSqQ_sCv0MNNzcrl49Y'
+# Load environment variables
+load_dotenv()
+stripe.api_key = os.getenv('STRIPE_API_KEY')
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text('Welcome! Use /cc <card_number> <exp_month> <exp_year> <cvc> to check a card (test mode only).')
+    """Handle the /start command."""
+    await update.message.reply_text('Use /cc <card_number> <exp_month> <exp_year> <cvc> to check a card (test mode).')
 
 async def check_card(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle the /cc command to check a credit card using Stripe."""
     try:
-        # Parse command: /cc card_number exp_month exp_year cvc
         args = context.args
         if len(args) != 4:
             await update.message.reply_text('Usage: /cc <card_number> <exp_month> <exp_year> <cvc>')
             return
-
         card_number, exp_month, exp_year, cvc = args
-        exp_month = int(exp_month)
-        exp_year = int(exp_year)
-
-        # Create a PaymentIntent for $1
         payment_intent = stripe.PaymentIntent.create(
             amount=100,  # $1 in cents
             currency='usd',
@@ -31,36 +29,33 @@ async def check_card(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 'type': 'card',
                 'card': {
                     'number': card_number,
-                    'exp_month': exp_month,
-                    'exp_year': exp_year,
+                    'exp_month': int(exp_month),
+                    'exp_year': int(exp_year),
                     'cvc': cvc,
                 },
             },
-            capture_method='manual',  # Pre-authorization
+            capture_method='manual',  # Pre-authorization, no charge
             confirm=True,
         )
-
         if payment_intent.status == 'requires_capture':
             await update.message.reply_text('Approved')
-            # Cancel the PaymentIntent to avoid holding funds
-            stripe.PaymentIntent.cancel(payment_intent.id)
+            stripe.PaymentIntent.cancel(payment_intent.id)  # Cancel to avoid holding funds
         else:
             await update.message.reply_text('Declined')
-
     except stripe.error.CardError as e:
         await update.message.reply_text(f'Declined: {e.error.message}')
     except Exception as e:
         await update.message.reply_text(f'Error: {str(e)}')
 
 def main():
-    # Initialize the bot
-    application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
-
-    # Add handlers
+    """Initialize and run the Telegram bot with explicit timezone."""
+    if not TELEGRAM_BOT_TOKEN or not stripe.api_key:
+        print("Error: TELEGRAM_BOT_TOKEN or STRIPE_API_KEY not set in .env")
+        return
+    # Set JobQueue timezone to UTC to avoid pytz error
+    application = Application.builder().token(TELEGRAM_BOT_TOKEN).job_queue_timezone(pytz.timezone('Asia/Kolkata')).build()
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('cc', check_card))
-
-    # Start the bot
     application.run_polling()
 
 if __name__ == '__main__':
