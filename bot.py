@@ -52,8 +52,11 @@ def main():
     if not TELEGRAM_BOT_TOKEN or not stripe.api_key:
         print("Error: TELEGRAM_BOT_TOKEN or STRIPE_API_KEY not set in .env")
         return
-    # Set JobQueue timezone to UTC to avoid pytz error
-    application = Application.builder().token(TELEGRAM_BOT_TOKEN).job_queue_timezone(pytz.timezone('Asia/Kolkata')).build()
+    # Build the application without job_queue_timezone
+    application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+    # Set the JobQueue timezone explicitly
+    if application.job_queue:
+        application.job_queue.scheduler.configure(timezone=pytz.timezone('Asia/Kolkata'))
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('cc', check_card))
     application.run_polling()
