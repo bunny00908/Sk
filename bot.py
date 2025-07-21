@@ -3,7 +3,7 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 # Replace with your Stripe test API key
-stripe.api_key = 'sk_test_51RmqVa2Ki2lOqBdBRY3iAuJBjAUgGTZu3JHnEgeaK360eDHKggYlFXh1xjpEKiscaVQht2CiDVKc8pmO3R8BUspI00EYD8gVJL'
+stripe.api_key = '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'
 
 # Replace with your Telegram bot token
 TELEGRAM_BOT_TOKEN = '7971051467:AAEgFdgmEcmfYmIWfSqQ_sCv0MNNzcrl49Y'
